@@ -14,7 +14,7 @@ export class SubscriptionMessage extends StratumBaseMessage {
     @IsString()
     @MaxLength(128)
     @Transform(({ value, key, obj, type }) => {
-        return obj.params[0] == null ? 'unknown' : SubscriptionMessage.refineUserAgent(obj.params[0]);
+        return obj?.params?.[0] == null ? 'unknown' : SubscriptionMessage.refineUserAgent(obj.params[0]);
     })
     public userAgent: string;
 
@@ -41,7 +41,7 @@ export class SubscriptionMessage extends StratumBaseMessage {
 
     public static refineUserAgent(userAgent: string): string {
         // return userAgent;
-        userAgent = userAgent.split(' ')[0].split('/')[0].split('V')[0];
+        userAgent = userAgent.split(' ')[0].split('/')[0].split('V')[0].split('-')[0];
 
         if (userAgent.includes('bosminer') || userAgent.includes('bOS')) {
             userAgent = 'Braiins OS';

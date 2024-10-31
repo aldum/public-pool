@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import { Socket } from 'net';
 import { firstValueFrom, Subscription } from 'rxjs';
 import { clearInterval } from 'timers';
+import { createInterface } from 'readline';
 
 import { AddressSettingsService } from '../ORM/address-settings/address-settings.service';
 import { BlocksService } from '../ORM/blocks/blocks.service';
@@ -49,8 +50,9 @@ export class StratumV1Client {
     public extraNonceAndSessionId: string;
     public sessionStart: Date;
     public noFee: boolean;
-    public hashRate: number;
+    public hashRate: number = 0;
 
+    private buffer: string = '';
 
     constructor(
         public readonly socket: Socket,
@@ -65,8 +67,11 @@ export class StratumV1Client {
     ) {
 
         this.socket.on('data', (data: Buffer) => {
-            data.toString()
-                .split('\n')
+            this.buffer += data.toString();
+            let lines = this.buffer.split('\n');
+            this.buffer = lines.pop() || ''; // Save the last part of the data (incomplete line) to the buffer
+
+            lines
                 .filter(m => m.length > 0)
                 .forEach(async (m) => {
                     try {
@@ -75,7 +80,7 @@ export class StratumV1Client {
                         await this.socket.end();
                         console.error(e);
                     }
-                })
+                });
         });
 
 
@@ -310,7 +315,7 @@ export class StratumV1Client {
 
 
                 } else {
-                    console.error('Mining Submit validation error');
+                    console.log('Mining Submit validation error');
                     const err = new StratumErrorMessage(
                         miningSubmitMessage.id,
                         eStratumErrorCode.OtherUnknown,
@@ -413,6 +418,7 @@ export class StratumV1Client {
         }
 
         const job = new MiningJob(
+            this.configService,
             network,
             this.stratumV1JobsService.getNextId(),
             payoutInformation,
@@ -582,9 +588,9 @@ export class StratumV1Client {
 
             await this.socket.write(data);
 
-
-            // we need to clear the jobs so that the difficulty set takes effect. Otherwise the different miner implementations can cause issues
             const jobTemplate = await firstValueFrom(this.stratumV1JobsService.newMiningJob$);
+            // we need to clear the jobs so that the difficulty set takes effect. Otherwise the different miner implementations can cause issues
+            jobTemplate.blockData.clearJobs = true;
             await this.sendNewMiningJob(jobTemplate);
 
         }
