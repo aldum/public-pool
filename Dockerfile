@@ -26,8 +26,9 @@ RUN npm i && npm run build
 # Docker final environment #
 ############################
 
-FROM node:18.16.1-bookworm-slim
+FROM node:18.16.1-alpine
 
+RUN apk add --no-cache sqlite
 # Expose ports for Stratum and Bitcoin RPC
 EXPOSE 3333 3334 8332
 
